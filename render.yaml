@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: calorie-vision-tool
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: QWEN_BASE_URL
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      - key: QWEN_MODEL
+        value: qwen3-vl-flash
+      - key: DASHSCOPE_API_KEY
+        sync: false

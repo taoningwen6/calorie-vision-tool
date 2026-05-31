@@ -1,0 +1,8 @@
+node_modules/
+dist/
+client/dist/
+.env
+api key.txt
+pic/
+.DS_Store
+*.log

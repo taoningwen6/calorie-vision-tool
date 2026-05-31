@@ -1,0 +1,20 @@
+{
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "functions": {
+    "api/[...path].js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/[...path].js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
