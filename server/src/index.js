@@ -450,7 +450,7 @@ app.post('/api/daily-summary', async (req, res) => {
     const content = completion.choices?.[0]?.message?.content;
     const json = parseModelContent(content);
     res.json({
-      summary: String(json.summary || '').slice(0, 160)
+      summary: String(json.summary || '').slice(0, 320)
     });
   } catch (error) {
     console.error(error);

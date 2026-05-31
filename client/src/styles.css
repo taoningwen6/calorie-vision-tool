@@ -469,9 +469,14 @@ h1 {
 }
 
 .advice-box {
-  margin-top: auto;
+  min-height: 120px;
+  margin-top: 12px;
   background: #eff8ef;
   color: var(--green-deep);
+}
+
+.summary-panel .advice-box {
+  flex: 0 0 auto;
 }
 
 .summary-button {
