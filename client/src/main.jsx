@@ -156,7 +156,7 @@ function getApiErrorMessage(payload, fallback) {
   return fallback;
 }
 
-async function compressImage(file, maxSize = 1280, quality = 0.82) {
+async function compressImage(file, maxSize = 1024, quality = 0.72) {
   const imageUrl = URL.createObjectURL(file);
   const image = await new Promise((resolve, reject) => {
     const img = new Image();
@@ -173,6 +173,8 @@ async function compressImage(file, maxSize = 1280, quality = 0.82) {
   canvas.height = height;
 
   const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, width, height);
   context.drawImage(image, 0, 0, width, height);
   URL.revokeObjectURL(imageUrl);
 
@@ -651,7 +653,7 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
     if (!file || !record.image) return;
 
     try {
-      const compressed = await compressImage(file, 1100, 0.78);
+      const compressed = await compressImage(file, 900, 0.68);
       patchRecord({
         leftoverImage: compressed,
         result: null,

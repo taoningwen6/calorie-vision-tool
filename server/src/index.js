@@ -229,6 +229,15 @@ function getOpenAIClient() {
   });
 }
 
+function getAnalysisErrorDetails(error) {
+  const message = error?.message || '';
+  if (/connection error|fetch failed|econnreset|etimedout|socket/i.test(message)) {
+    return '连接千问云失败，常见原因是图片数据过大或网络波动。已在新版中收紧图片压缩，请刷新页面后重试。';
+  }
+
+  return message || '请检查网络、DASHSCOPE_API_KEY、QWEN_MODEL，或稍后重试。';
+}
+
 function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
   const label = mealName || mealLabel(mealType);
   const base = [
@@ -362,9 +371,7 @@ app.post('/api/analyze-meal', async (req, res) => {
     console.error(error);
     res.status(502).json({
       error: '图像识别失败',
-      details:
-        error?.message ||
-        '请检查网络、DASHSCOPE_API_KEY、QWEN_MODEL，或稍后重试。'
+      details: getAnalysisErrorDetails(error)
     });
   }
 });
