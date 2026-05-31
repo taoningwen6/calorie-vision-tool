@@ -233,6 +233,7 @@ h1 {
 
 .field-grid label,
 .fixed-profile-grid label,
+.profile-save-cell,
 .activity-field,
 .meal-comment {
   display: grid;
@@ -283,6 +284,38 @@ h1 {
   min-height: 38px;
   background: rgba(255, 255, 255, 0.78);
   font-size: 0.92rem;
+}
+
+.profile-save-cell {
+  align-content: end;
+  min-width: 0;
+}
+
+.save-profile-button {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #f0d5c8;
+  border-radius: 12px;
+  background: #fffaf4;
+  color: var(--warm-deep);
+  padding: 0 10px;
+  font-weight: 900;
+  box-shadow: 0 5px 0 rgba(184, 95, 69, 0.08);
+}
+
+.save-profile-button:hover {
+  background: #fff3e7;
+}
+
+.profile-save-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-row {
@@ -359,7 +392,7 @@ h1 {
   line-height: 1;
 }
 
-.calorie-meter strong.over-target {
+.calorie-meter strong.attention-target {
   color: var(--orange);
 }
 
@@ -393,6 +426,14 @@ h1 {
 
 .progress.over span {
   background: linear-gradient(90deg, var(--orange), #f06f5f, var(--red));
+}
+
+.progress.under span {
+  background: linear-gradient(90deg, #f7c46f, var(--orange));
+}
+
+.progress.met span {
+  background: linear-gradient(90deg, var(--green), #76bd87);
 }
 
 .macro-row,
@@ -620,7 +661,7 @@ h1 {
 
 .action-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
   margin: 12px 0;
 }
@@ -659,13 +700,6 @@ h1 {
   filter: saturate(1.05) brightness(1.02);
 }
 
-.secondary-upload {
-  border: 1px solid #f0d5c8;
-  background: #fffaf4;
-  box-shadow: 0 8px 0 rgba(184, 95, 69, 0.08);
-  color: var(--warm-deep);
-}
-
 .icon-button input {
   position: absolute;
   inset: 0;
@@ -687,12 +721,6 @@ h1 {
   gap: 10px;
   align-items: center;
   margin: 0 0 12px;
-}
-
-.leftover-upload-group {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
 }
 
 .leftover-upload {
@@ -894,6 +922,7 @@ h1 {
 }
 
 .badge-medal {
+  position: relative;
   display: grid;
   place-items: center;
   width: min(260px, 72vw);
@@ -911,14 +940,40 @@ h1 {
   animation: badge-pop 0.36s ease-out;
 }
 
+.badge-medal::before,
+.badge-medal::after {
+  position: absolute;
+  bottom: -22px;
+  width: 42px;
+  height: 70px;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(180deg, #f28b69, #c95f4b);
+  content: "";
+  transform-origin: top center;
+  z-index: -1;
+}
+
+.badge-medal::before {
+  left: 72px;
+  transform: rotate(14deg);
+}
+
+.badge-medal::after {
+  right: 72px;
+  transform: rotate(-14deg);
+}
+
 .badge-medal strong {
-  font-size: 3rem;
+  font-size: 4.2rem;
   line-height: 1;
 }
 
 .badge-medal em {
-  margin-top: 8px;
-  font-size: 1rem;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.44);
+  padding: 6px 12px;
+  font-size: 0.94rem;
   font-style: normal;
   font-weight: 800;
 }
@@ -982,7 +1037,7 @@ h1 {
 
   .field-grid,
   .fixed-profile-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .activity-row {
@@ -999,7 +1054,7 @@ h1 {
   }
 
   .action-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .leftover-row {

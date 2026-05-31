@@ -29,21 +29,22 @@ const activityOptions = [
 ];
 
 const extraIntakeOptions = [
-  { value: 'clean', label: '今天很乖，最多只喝了美式', calories: 20 },
-  { value: 'small', label: '多摄入了一点点，影响不大', calories: 90 },
-  { value: 'messy', label: '吃了不少乱七八糟的，下次一定乖', calories: 220 }
+  { value: 'none', label: '基本无额外摄入，如一杯美式', calories: 0 },
+  { value: 'light', label: '少量额外摄入，如一小份水果', calories: 80 },
+  { value: 'moderate', label: '中等额外摄入，如一杯奶茶或甜点', calories: 180 },
+  { value: 'high', label: '较多额外摄入，如零食或夜宵', calories: 320 }
 ];
 
 const defaultProfile = {
-  profileVersion: 2,
-  goal: 'lose',
-  sex: 'female',
-  age: '24',
-  heightCm: '170',
-  weightKg: '62.5',
-  targetWeightKg: '57',
+  profileVersion: 3,
+  goal: 'maintain',
+  sex: 'unspecified',
+  age: '',
+  heightCm: '',
+  weightKg: '',
+  targetWeightKg: '',
   activityLevel: 'light',
-  extraIntake: 'clean'
+  extraIntake: 'none'
 };
 
 const defaultRecords = meals.reduce((acc, meal) => {
@@ -79,27 +80,33 @@ function loadStored(key, fallback) {
 }
 
 function loadProfile() {
-  const stored = loadStored('calorie-profile', defaultProfile);
-  const activityMap = {
-    rest: 'busy',
-    low: 'light',
-    medium: 'light',
-    high: 'cardio',
-    very_high: 'heavy'
-  };
+  const stored = loadStored('calorie-profile', null);
 
   if (stored?.profileVersion === defaultProfile.profileVersion) {
     return {
       ...defaultProfile,
       ...stored,
-      activityLevel: activityMap[stored.activityLevel] || stored.activityLevel || defaultProfile.activityLevel
+      activityLevel: defaultProfile.activityLevel,
+      extraIntake: extraIntakeOptions.some((option) => option.value === stored.extraIntake)
+        ? stored.extraIntake
+        : defaultProfile.extraIntake
     };
   }
 
   return {
-    ...defaultProfile,
-    activityLevel: activityMap[stored?.activityLevel] || stored?.activityLevel || defaultProfile.activityLevel,
-    extraIntake: stored?.extraIntake || defaultProfile.extraIntake
+    ...defaultProfile
+  };
+}
+
+function getSavedProfile(profile) {
+  return {
+    profileVersion: defaultProfile.profileVersion,
+    goal: profile.goal,
+    sex: profile.sex,
+    age: profile.age,
+    heightCm: profile.heightCm,
+    weightKg: profile.weightKg,
+    targetWeightKg: profile.targetWeightKg
   };
 }
 
@@ -199,6 +206,14 @@ function getMealRecommendation(mealId, recommendedCalories, extraCalories = 0) {
   return Math.round((available * (ratios[mealId] || 0.33)) / 10) * 10;
 }
 
+function isGoalMet(profile, totalCalories, recommendedCalories) {
+  if (profile.goal === 'gain') {
+    return totalCalories >= recommendedCalories;
+  }
+
+  return totalCalories <= recommendedCalories;
+}
+
 function getSummary(records, profile) {
   const mealSummary = meals.reduce(
     (summary, meal) => {
@@ -275,10 +290,10 @@ function getPresetEncouragement(records) {
     return '今天已经记录到午饭啦。晚上也要好好吃饭哦。';
   }
 
-  return '三餐都记录好啦。可以点“今日总结”，看看鱼鱼宝的小总结。';
+  return '三餐都记录好啦。可以点“今日总结”，看看鱼鱼的小总结。上传完三餐即可查看今日总结。';
 }
 
-function ProfilePanel({ profile, onChange, recommendedCalories }) {
+function ProfilePanel({ profile, onChange, recommendedCalories, onSaveProfile, profileSaveStatus }) {
   function update(field, value) {
     onChange({ ...profile, [field]: value });
   }
@@ -367,6 +382,14 @@ function ProfilePanel({ profile, onChange, recommendedCalories }) {
             onChange={(event) => update('targetWeightKg', event.target.value)}
           />
         </label>
+        <div className="profile-save-cell">
+          <span className="profile-save-note">
+            {profileSaveStatus || '只保存在当前浏览器'}
+          </span>
+          <button className="save-profile-button" type="button" onClick={onSaveProfile}>
+            保存个人信息
+          </button>
+        </div>
       </div>
 
       <div className="subsection-label">今日活动</div>
@@ -418,7 +441,11 @@ function SummaryPanel({
   const summary = getSummary(records, profile);
   const progressRaw = (summary.totalCalories / recommendedCalories) * 100;
   const progress = clamp(progressRaw, 0, 92);
+  const isGainGoal = profile.goal === 'gain';
   const isOverTarget = summary.totalCalories > recommendedCalories;
+  const isUnderTarget = summary.totalCalories < recommendedCalories;
+  const needsAttention = isGainGoal ? isUnderTarget : isOverTarget;
+  const progressTone = isGainGoal ? (isUnderTarget ? 'under' : 'met') : isOverTarget ? 'over' : '';
   const presetEncouragement = getPresetEncouragement(records);
 
   return (
@@ -436,10 +463,10 @@ function SummaryPanel({
       <div className="calorie-meter">
         <div>
           <span>吃下热量</span>
-          <strong className={isOverTarget ? 'over-target' : ''}>{summary.totalCalories}</strong>
+          <strong className={needsAttention ? 'attention-target' : ''}>{summary.totalCalories}</strong>
           <em>/ {formatNumber(recommendedCalories)} kcal</em>
         </div>
-        <div className={`progress ${isOverTarget ? 'over' : ''}`} aria-label="今日热量进度">
+        <div className={`progress ${progressTone}`} aria-label="今日热量进度">
           <span style={{ width: `${progress}%` }} />
         </div>
       </div>
@@ -686,45 +713,22 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
       <div className="action-row">
         <label className="icon-button">
           <Camera size={18} />
-          <span>拍照</span>
-          <input
-            accept="image/*"
-            capture="environment"
-            type="file"
-            onChange={handleMainFileChange}
-          />
-        </label>
-        <label className="icon-button secondary-upload">
-          <ImagePlus size={18} />
-          <span>相册</span>
+          <span>拍照/相册</span>
           <input accept="image/*" type="file" onChange={handleMainFileChange} />
         </label>
       </div>
 
       <div className="leftover-row">
-        <div className="leftover-upload-group">
-          <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
-            <Camera size={16} />
-            <span>{record.leftoverImage ? '重拍剩饭' : '拍剩饭'}</span>
-            <input
-              accept="image/*"
-              capture="environment"
-              disabled={!record.image}
-              type="file"
-              onChange={handleLeftoverFileChange}
-            />
-          </label>
-          <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
-            <ImagePlus size={16} />
-            <span>{record.leftoverImage ? '换相册' : '选相册'}</span>
-            <input
-              accept="image/*"
-              disabled={!record.image}
-              type="file"
-              onChange={handleLeftoverFileChange}
-            />
-          </label>
-        </div>
+        <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
+          <ImagePlus size={16} />
+          <span>上传剩下的饭菜</span>
+          <input
+            accept="image/*"
+            disabled={!record.image}
+            type="file"
+            onChange={handleLeftoverFileChange}
+          />
+        </label>
         <button className="skip-button" type="button" onClick={skipMeal}>
           这顿没吃
         </button>
@@ -791,6 +795,7 @@ function App() {
     error: ''
   });
   const [showBadge, setShowBadge] = React.useState(false);
+  const [profileSaveStatus, setProfileSaveStatus] = React.useState('');
 
   const recommendedCalories = estimateRecommendedCalories(profile);
   const summary = getSummary(records, profile);
@@ -818,12 +823,18 @@ function App() {
     dailySummary.key === summaryKey ? dailySummary : { key: '', text: '', status: 'idle', error: '' };
 
   React.useEffect(() => {
-    localStorage.setItem('calorie-profile', JSON.stringify(profile));
-  }, [profile]);
-
-  React.useEffect(() => {
     localStorage.setItem('calorie-records', JSON.stringify(records));
   }, [records]);
+
+  function handleProfileChange(nextProfile) {
+    setProfile(nextProfile);
+    setProfileSaveStatus('');
+  }
+
+  function saveProfile() {
+    localStorage.setItem('calorie-profile', JSON.stringify(getSavedProfile(profile)));
+    setProfileSaveStatus('已保存，下次打开还会在。');
+  }
 
   async function generateDailySummary() {
     if (!allMealsDone || dailySummary.status === 'loading') return;
@@ -846,7 +857,7 @@ function App() {
         error: ''
       });
 
-      if (summary.totalCalories <= recommendedCalories) {
+      if (isGoalMet(profile, summary.totalCalories, recommendedCalories)) {
         setShowBadge(true);
       }
     } catch (error) {
@@ -877,7 +888,7 @@ function App() {
       <section className="topbar">
         <div>
           <p className="eyebrow">AI meal check</p>
-          <h1>Hi 我是鱼鱼</h1>
+          <h1>Hi 我是鱼鱼AI助手</h1>
           <p className="intro">我可以记录每日摄入和消耗，我们一起加油！</p>
         </div>
         <button className="reset-button" type="button" onClick={resetDay}>
@@ -889,8 +900,10 @@ function App() {
       <section className="dashboard-grid">
         <ProfilePanel
           profile={profile}
+          profileSaveStatus={profileSaveStatus}
           recommendedCalories={recommendedCalories}
-          onChange={setProfile}
+          onChange={handleProfileChange}
+          onSaveProfile={saveProfile}
         />
         <SummaryPanel
           dailySummary={visibleDailySummary}
@@ -923,8 +936,8 @@ function App() {
       {showBadge && (
         <button className="badge-overlay" type="button" onClick={() => setShowBadge(false)}>
           <span className="badge-medal">
-            <strong>棒棒</strong>
-            <em>今日没有超标</em>
+            <strong>棒</strong>
+            <em>{profile.goal === 'gain' ? '已达到目标' : '今日节奏不错'}</em>
           </span>
         </button>
       )}
