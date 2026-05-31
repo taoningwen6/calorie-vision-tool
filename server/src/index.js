@@ -189,10 +189,10 @@ function profileText(profile) {
     gain: '增肌'
   };
   const activities = {
-    busy: '今天忙，没啥运动',
-    light: '有一点点轻微运动',
-    cardio: '去进行了正常强度的有氧、跑步、爬坡',
-    heavy: '今日有大量运动'
+    busy: '久坐/通勤，例如散步10分钟，运动消耗约 0-80 kcal',
+    light: '轻微活动，例如散步30分钟，运动消耗约 80-180 kcal',
+    cardio: '常规有氧，例如跑步/爬坡30分钟，运动消耗约 180-350 kcal',
+    heavy: '大量运动，例如高强度力量/球类60分钟，运动消耗约 250-450 kcal'
   };
 
   return [
@@ -241,7 +241,7 @@ function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
     '用户补充评论是重要线索，请结合图片一起理解。评论里提到食物名称、没吃/没喝、吃了一半、剩了一部分、只计算某几样时，请自然地据此调整实际摄入热量。',
     '如果评论像“是酸菜包子，豆浆没喝”，通常理解为酸菜包子参与估算，豆浆不参与估算；如果评论本身含糊，就按图片和常见份量综合判断，并在 portionNotes 里说明不确定点。',
     '如果用户提到某个食物吃了一半、1/3、剩了一半等，请按你对语义的理解折算那一项，不需要机械套规则。',
-    '热量估计要略微偏保守上浮：如果视觉估计在 550 kcal 左右，最终 totalCalories 和对应食物热量可输出到约 600 kcal；一般可比直觉估算高 5%-12%，但不要夸张翻倍。',
+    '热量估计要比直觉预估略激进、偏高一点点：优先选择常见份量区间的中上值，把烹调用油、酱汁、糖、坚果、奶制品等隐形热量计入。若视觉估计在 550 kcal 左右，最终 totalCalories 和对应食物热量可输出到约 620 kcal；一般可比直觉估算高 8%-15%，但不要夸张翻倍。',
     'advice 使用简洁、科学的风格，不要过度情绪化。用 2-3 句说明这餐主要吃了什么、结构是否均衡，并根据早餐/午餐/晚餐的侧重点给一个明确建议；总长度控制在 90 字以内。',
     '热量只是估算，不做医疗诊断。看不清或份量不确定时，降低 confidence，并把原因写进 portionNotes 或 warnings。'
   ];
@@ -251,7 +251,7 @@ function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
       '你会看到两张图：第一张是开吃前的餐食，第二张是剩下的饭菜。',
       '请先估算开吃前总热量 originalCalories，再估算剩余热量 leftoverCalories，最后用减法得到实际吃掉的 consumedCalories。',
       'totalCalories 尽量反映实际吃下的 consumedCalories；foods 列表描述你判断的实际摄入食物和份量。',
-      '减法后的 consumedCalories 也按略微保守上浮原则输出，避免低估实际摄入。',
+      '减法后的 consumedCalories 也按略微偏高原则输出，剩余量不确定时宁可少扣一点，避免低估实际摄入。',
       'comparison.summary 用一句人话解释这次减法，例如“看起来米饭大约吃了一半，酱汁和虾仁吃掉不少”。'
     );
   } else {
@@ -340,7 +340,7 @@ app.post('/api/analyze-meal', async (req, res) => {
         {
           role: 'system',
           content:
-            '你是一个谨慎的中文饮食热量估算助手。只输出符合 schema 的 JSON。每餐 advice 要简洁、科学，概括主要食物、结构判断和一个建议。热量和营养都是估算，不做医疗诊断；为了避免低估摄入，热量可略微偏保守上浮。'
+            '你是一个谨慎的中文饮食热量估算助手。只输出符合 schema 的 JSON。每餐 advice 要简洁、科学，概括主要食物、结构判断和一个建议。热量和营养都是估算，不做医疗诊断；为了避免低估摄入，热量要比直觉预估略微偏高，优先按常见份量的中上值和完整调味/烹调用油估算。'
         },
         {
           role: 'user',

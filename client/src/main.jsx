@@ -22,10 +22,10 @@ const meals = [
 ];
 
 const activityOptions = [
-  { value: 'busy', label: '今天忙，没啥运动', factor: 1.15 },
-  { value: 'light', label: '有一点点轻微运动', factor: 1.25 },
-  { value: 'cardio', label: '去进行了正常强度的有氧、跑步、爬坡', factor: 1.45 },
-  { value: 'heavy', label: '今日有大量运动！', factor: 1.7 }
+  { value: 'busy', label: '久坐/通勤，例如散步10分钟（约 0-80 kcal）', exerciseCalories: 40 },
+  { value: 'light', label: '轻微活动，例如散步30分钟（约 80-180 kcal）', exerciseCalories: 130 },
+  { value: 'cardio', label: '常规有氧，例如跑步/爬坡30分钟（约 180-350 kcal）', exerciseCalories: 260 },
+  { value: 'heavy', label: '大量运动，例如高强度力量/球类60分钟（约 250-450 kcal）', exerciseCalories: 350 }
 ];
 
 const extraIntakeOptions = [
@@ -221,15 +221,16 @@ function estimateRecommendedCalories(profile) {
     sex === 'male'
       ? 10 * weight + 6.25 * height - 5 * age + 5
       : 10 * weight + 6.25 * height - 5 * age - 161;
-  const factor =
-    activityOptions.find((option) => option.value === profile.activityLevel)?.factor || 1.4;
+  const baseDailyFactor = 1.2;
+  const exerciseCalories =
+    activityOptions.find((option) => option.value === profile.activityLevel)?.exerciseCalories || 0;
   const goalAdjust = {
     lose: -350,
     maintain: 0,
     gain: 280
   }[profile.goal];
 
-  return clamp(Math.round(base * factor + goalAdjust), 1100, 3800);
+  return clamp(Math.round(base * baseDailyFactor + exerciseCalories + goalAdjust), 1100, 3800);
 }
 
 function getMealRecommendation(mealId, recommendedCalories, extraCalories = 0) {
@@ -462,7 +463,7 @@ function ProfilePanel({ profile, onChange, recommendedCalories, onSaveProfile, p
       </div>
 
       <div className="calorie-chip">
-        今日推荐约 <strong>{formatNumber(recommendedCalories)}</strong> kcal
+        今日推荐摄入约 <strong>{formatNumber(recommendedCalories)}</strong> kcal
       </div>
     </section>
   );
@@ -937,7 +938,7 @@ function App() {
         <div>
           <p className="eyebrow">AI meal check</p>
           <h1>Hi 我是鱼鱼AI助手</h1>
-          <p className="intro">我可以记录每日摄入和消耗，我们一起加油！</p>
+          <p className="intro">记录每日摄入和消耗，我们一起加油！</p>
         </div>
         <button className="reset-button" type="button" onClick={resetDay}>
           <RotateCcw size={17} />
