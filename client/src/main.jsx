@@ -119,6 +119,32 @@ function formatNumber(value, fallback = 0) {
   return Number.isFinite(number) ? Math.round(number) : fallback;
 }
 
+async function readJsonPayload(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function getApiErrorMessage(payload, fallback) {
+  if (!payload) return fallback;
+  if (typeof payload.details === 'string') return payload.details;
+
+  if (payload.details?.fieldErrors) {
+    const fields = Object.entries(payload.details.fieldErrors)
+      .filter(([, messages]) => Array.isArray(messages) && messages.length)
+      .map(([field, messages]) => `${field}: ${messages.join('、')}`);
+
+    if (fields.length) {
+      return `${payload.error || fallback}：${fields.join('；')}`;
+    }
+  }
+
+  if (typeof payload.error === 'string') return payload.error;
+  return fallback;
+}
+
 async function compressImage(file, maxSize = 1280, quality = 0.82) {
   const imageUrl = URL.createObjectURL(file);
   const image = await new Promise((resolve, reject) => {
@@ -277,20 +303,21 @@ function getPresetEncouragement(records) {
   const breakfastDone = Boolean(records.breakfast?.skipped || records.breakfast?.result);
   const lunchDone = Boolean(records.lunch?.skipped || records.lunch?.result);
   const dinnerDone = Boolean(records.dinner?.skipped || records.dinner?.result);
+  const summaryHint = '上传完三餐就能查看今日总结~';
 
   if (!breakfastDone) {
-    return '慢慢记录就很好啦。记得按时吃早饭哦。';
+    return `慢慢记录就很好啦。记得按时吃早饭哦。${summaryHint}`;
   }
 
   if (!lunchDone) {
-    return '早餐记录好啦。记得按时吃午饭哦。';
+    return `早餐记录好啦。记得按时吃午饭哦。${summaryHint}`;
   }
 
   if (!dinnerDone) {
-    return '今天已经记录到午饭啦。晚上也要好好吃饭哦。';
+    return `今天已经记录到午饭啦。晚上也要好好吃饭哦。${summaryHint}`;
   }
 
-  return '三餐都记录好啦。可以点“今日总结”，看看鱼鱼的小总结。上传完三餐即可查看今日总结。';
+  return '三餐都记录好啦。可以点“今日总结”，看看鱼鱼的小总结。';
 }
 
 function ProfilePanel({ profile, onChange, recommendedCalories, onSaveProfile, profileSaveStatus }) {
@@ -550,10 +577,10 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
         })
       });
 
-      const payload = await response.json();
+      const payload = await readJsonPayload(response);
 
       if (!response.ok) {
-        throw new Error(payload.details || payload.error || '识别失败');
+        throw new Error(getApiErrorMessage(payload, '识别失败'));
       }
 
       onUpdate(meal.id, {
@@ -847,8 +874,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: summaryKey
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.details || payload.error || '今日总结生成失败');
+      const payload = await readJsonPayload(response);
+      if (!response.ok) throw new Error(getApiErrorMessage(payload, '今日总结生成失败'));
 
       setDailySummary({
         key: summaryKey,

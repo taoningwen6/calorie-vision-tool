@@ -31,7 +31,10 @@ const profileSchema = z.object({
   activityLevel: z
     .enum(['busy', 'light', 'cardio', 'heavy'])
     .default('light'),
-  extraIntake: z.enum(['clean', 'small', 'messy']).default('clean').optional()
+  extraIntake: z
+    .enum(['none', 'light', 'moderate', 'high', 'clean', 'small', 'messy'])
+    .default('none')
+    .optional()
 });
 
 const analyzeSchema = z.object({
