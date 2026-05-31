@@ -620,7 +620,7 @@ h1 {
 
 .action-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 12px 0;
 }
@@ -659,6 +659,13 @@ h1 {
   filter: saturate(1.05) brightness(1.02);
 }
 
+.secondary-upload {
+  border: 1px solid #f0d5c8;
+  background: #fffaf4;
+  box-shadow: 0 8px 0 rgba(184, 95, 69, 0.08);
+  color: var(--warm-deep);
+}
+
 .icon-button input {
   position: absolute;
   inset: 0;
@@ -680,6 +687,12 @@ h1 {
   gap: 10px;
   align-items: center;
   margin: 0 0 12px;
+}
+
+.leftover-upload-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .leftover-upload {
@@ -986,11 +999,15 @@ h1 {
   }
 
   .action-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .leftover-row {
     grid-template-columns: 1fr;
+  }
+
+  .skip-button {
+    width: 100%;
   }
 
   .leftover-preview {

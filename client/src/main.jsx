@@ -686,7 +686,7 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
       <div className="action-row">
         <label className="icon-button">
           <Camera size={18} />
-          <span>拍照/上传</span>
+          <span>拍照</span>
           <input
             accept="image/*"
             capture="environment"
@@ -694,21 +694,37 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
             onChange={handleMainFileChange}
           />
         </label>
-
+        <label className="icon-button secondary-upload">
+          <ImagePlus size={18} />
+          <span>相册</span>
+          <input accept="image/*" type="file" onChange={handleMainFileChange} />
+        </label>
       </div>
 
       <div className="leftover-row">
-        <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
-          <ImagePlus size={16} />
-          <span>{record.leftoverImage ? '更换剩下的饭菜' : '上传剩下的饭菜'}</span>
-          <input
-            accept="image/*"
-            capture="environment"
-            disabled={!record.image}
-            type="file"
-            onChange={handleLeftoverFileChange}
-          />
-        </label>
+        <div className="leftover-upload-group">
+          <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
+            <Camera size={16} />
+            <span>{record.leftoverImage ? '重拍剩饭' : '拍剩饭'}</span>
+            <input
+              accept="image/*"
+              capture="environment"
+              disabled={!record.image}
+              type="file"
+              onChange={handleLeftoverFileChange}
+            />
+          </label>
+          <label className={`leftover-upload ${!record.image ? 'disabled' : ''}`}>
+            <ImagePlus size={16} />
+            <span>{record.leftoverImage ? '换相册' : '选相册'}</span>
+            <input
+              accept="image/*"
+              disabled={!record.image}
+              type="file"
+              onChange={handleLeftoverFileChange}
+            />
+          </label>
+        </div>
         <button className="skip-button" type="button" onClick={skipMeal}>
           这顿没吃
         </button>
