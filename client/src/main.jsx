@@ -127,6 +127,17 @@ async function readJsonPayload(response) {
   }
 }
 
+async function apiFetch(path, options) {
+  try {
+    return await fetch(path, options);
+  } catch (error) {
+    const isLocalDev = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    if (!isLocalDev) throw error;
+
+    return fetch(`http://localhost:3001${path}`, options);
+  }
+}
+
 function getApiErrorMessage(payload, fallback) {
   if (!payload) return fallback;
   if (typeof payload.details === 'string') return payload.details;
@@ -562,7 +573,7 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
     });
 
     try {
-      const response = await fetch('/api/analyze-meal', {
+      const response = await apiFetch('/api/analyze-meal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -593,6 +604,11 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
         error: ''
       });
     } catch (error) {
+      const errorMessage =
+        error instanceof TypeError
+          ? '连接后端失败，请确认本地后端已启动，或刷新页面后再试。'
+          : error.message || '识别失败，请重试。';
+
       onUpdate(meal.id, {
         ...record,
         image: nextImage,
@@ -600,7 +616,7 @@ function MealCard({ meal, record, profile, recommendedCalories, onUpdate }) {
         skipped: false,
         result: null,
         status: 'error',
-        error: error.message || '识别失败，请重试。'
+        error: errorMessage
       });
     }
   }
@@ -869,7 +885,7 @@ function App() {
     setDailySummary({ key: summaryKey, text: '', status: 'loading', error: '' });
 
     try {
-      const response = await fetch('/api/daily-summary', {
+      const response = await apiFetch('/api/daily-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: summaryKey
@@ -888,11 +904,16 @@ function App() {
         setShowBadge(true);
       }
     } catch (error) {
+      const errorMessage =
+        error instanceof TypeError
+          ? '连接后端失败，请确认本地后端已启动，或刷新页面后再试。'
+          : error.message || '今日总结生成失败';
+
       setDailySummary({
         key: summaryKey,
         text: '',
         status: 'error',
-        error: error.message || '今日总结生成失败'
+        error: errorMessage
       });
     }
   }
