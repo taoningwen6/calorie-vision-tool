@@ -940,7 +940,7 @@ function App() {
         <div>
           <p className="eyebrow">AI meal check</p>
           <h1>Hi 我是鱼鱼AI助手</h1>
-          <p className="intro">记录每日摄入和消耗，我们一起加油！</p>
+          <p className="intro">拍照记录每日摄入和消耗，我们一起加油！</p>
         </div>
         <button className="reset-button" type="button" onClick={resetDay}>
           <RotateCcw size={17} />
