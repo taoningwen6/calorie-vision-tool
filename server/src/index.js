@@ -232,10 +232,33 @@ function getOpenAIClient() {
 function getAnalysisErrorDetails(error) {
   const message = error?.message || '';
   if (/connection error|fetch failed|econnreset|etimedout|socket/i.test(message)) {
-    return '连接千问云失败，常见原因是图片数据过大或网络波动。已在新版中收紧图片压缩，请刷新页面后重试。';
+    return '请稍后重试。';
   }
 
   return message || '请检查网络、DASHSCOPE_API_KEY、QWEN_MODEL，或稍后重试。';
+}
+
+function isRetryableAnalysisError(error) {
+  return /connection error|fetch failed|econnreset|etimedout|socket/i.test(error?.message || '');
+}
+
+function wait(ms) {
+  return new Promise((resolveWait) => {
+    setTimeout(resolveWait, ms);
+  });
+}
+
+async function createChatCompletionWithRetry(client, options) {
+  try {
+    return await client.chat.completions.create(options);
+  } catch (error) {
+    if (!isRetryableAnalysisError(error)) {
+      throw error;
+    }
+
+    await wait(700);
+    return client.chat.completions.create(options);
+  }
 }
 
 function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
@@ -250,7 +273,7 @@ function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
     '用户补充评论是重要线索，请结合图片一起理解。评论里提到食物名称、没吃/没喝、吃了一半、剩了一部分、只计算某几样时，请自然地据此调整实际摄入热量。',
     '如果评论像“是酸菜包子，豆浆没喝”，通常理解为酸菜包子参与估算，豆浆不参与估算；如果评论本身含糊，就按图片和常见份量综合判断，并在 portionNotes 里说明不确定点。',
     '如果用户提到某个食物吃了一半、1/3、剩了一半等，请按你对语义的理解折算那一项，不需要机械套规则。',
-    '热量估计要比直觉预估略激进、偏高一点点：优先选择常见份量区间的中上值，把烹调用油、酱汁、糖、坚果、奶制品等隐形热量计入。若视觉估计在 550 kcal 左右，最终 totalCalories 和对应食物热量可输出到约 620 kcal；一般可比直觉估算高 8%-15%，但不要夸张翻倍。',
+    '热量估计要明显比直觉预估激进一些、偏高一些：优先选择常见份量区间的偏上值，把烹调用油、酱汁、糖、坚果、奶制品、裹粉、炸制吸油等隐形热量完整计入。外卖、餐馆菜、油光明显、酱汁多、主食分量不清时，要按中高热量版本估算。若视觉估计在 550 kcal 左右，最终 totalCalories 和对应食物热量可输出到约 650-700 kcal；一般可比直觉估算高 15%-25%，但不要无依据夸张翻倍。',
     'advice 使用简洁、科学的风格，不要过度情绪化。用 2-3 句说明这餐主要吃了什么、结构是否均衡，并根据早餐/午餐/晚餐的侧重点给一个明确建议；总长度控制在 90 字以内。',
     '热量只是估算，不做医疗诊断。看不清或份量不确定时，降低 confidence，并把原因写进 portionNotes 或 warnings。'
   ];
@@ -260,7 +283,7 @@ function buildPrompt({ mealType, mealName, profile, hasLeftover, comment }) {
       '你会看到两张图：第一张是开吃前的餐食，第二张是剩下的饭菜。',
       '请先估算开吃前总热量 originalCalories，再估算剩余热量 leftoverCalories，最后用减法得到实际吃掉的 consumedCalories。',
       'totalCalories 尽量反映实际吃下的 consumedCalories；foods 列表描述你判断的实际摄入食物和份量。',
-      '减法后的 consumedCalories 也按略微偏高原则输出，剩余量不确定时宁可少扣一点，避免低估实际摄入。',
+      '减法后的 consumedCalories 也按偏高原则输出，剩余量不确定时宁可少扣 10%-20%，避免低估实际摄入；酱汁、油脂和汤底通常会附着或被吃下，不要因为盘里有剩余就过度扣减。',
       'comparison.summary 用一句人话解释这次减法，例如“看起来米饭大约吃了一半，酱汁和虾仁吃掉不少”。'
     );
   } else {
@@ -333,7 +356,7 @@ app.post('/api/analyze-meal', async (req, res) => {
   }
 
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await createChatCompletionWithRetry(client, {
       model,
       temperature: 0.35,
       max_tokens: 1000,
@@ -349,7 +372,7 @@ app.post('/api/analyze-meal', async (req, res) => {
         {
           role: 'system',
           content:
-            '你是一个谨慎的中文饮食热量估算助手。只输出符合 schema 的 JSON。每餐 advice 要简洁、科学，概括主要食物、结构判断和一个建议。热量和营养都是估算，不做医疗诊断；为了避免低估摄入，热量要比直觉预估略微偏高，优先按常见份量的中上值和完整调味/烹调用油估算。'
+            '你是一个谨慎但偏保守高估的中文饮食热量估算助手。只输出符合 schema 的 JSON。每餐 advice 要简洁、科学，概括主要食物、结构判断和一个建议。热量和营养都是估算，不做医疗诊断；为了避免低估摄入，热量要比直觉预估明显偏高一些，优先按常见份量的偏上值估算，并完整计入调味、酱汁、烹调用油、炸制吸油和外卖隐形热量。'
         },
         {
           role: 'user',
@@ -405,7 +428,7 @@ app.post('/api/daily-summary', async (req, res) => {
         {
           role: 'system',
           content:
-            '你是一个温暖、鼓励为主的中文饮食记录伙伴。只输出 JSON，格式为 {"summary":"..."}。总结要有人味，不责备，不制造焦虑，80 字以内。'
+            '你是一个温暖但客观真实的中文饮食记录伙伴。只输出 JSON，格式为 {"summary":"..."}。总结要有人味，不责备，不制造焦虑，但必须如实指出和用户目标冲突的问题，例如增肌却少吃一餐、热量明显不足、蛋白可能不足，或减脂时热量明显超标。用鼓励语气给一个具体下一步建议，100 字以内。'
         },
         {
           role: 'user',
@@ -418,7 +441,7 @@ app.post('/api/daily-summary', async (req, res) => {
               ? `额外摄入: ${extraIntake.label}，估算 ${Math.round(extraIntake.calories)} kcal`
               : '额外摄入: 未记录',
             `三餐记录: ${JSON.stringify(meals)}。`,
-            '请基于目标、三餐和活动量，生成一句鼓励为主的今日总结。如果没吃某餐，也温和提醒不要长期忽略正餐。'
+            '请基于目标、三餐和活动量，生成一句鼓励但客观的今日总结。若目标是增肌且没吃某餐或总热量明显低于推荐，必须明确指出这会影响增肌，并建议下一餐补足主食和优质蛋白；若目标是减脂但总热量明显超标，也要直接说明并给出温和调整建议。'
           ].join('\n')
         }
       ]

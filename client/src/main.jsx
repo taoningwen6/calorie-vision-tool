@@ -140,6 +140,7 @@ async function apiFetch(path, options) {
 
 function getApiErrorMessage(payload, fallback) {
   if (!payload) return fallback;
+  if (typeof payload.error === 'string') return payload.error;
   if (typeof payload.details === 'string') return payload.details;
 
   if (payload.details?.fieldErrors) {
@@ -152,7 +153,6 @@ function getApiErrorMessage(payload, fallback) {
     }
   }
 
-  if (typeof payload.error === 'string') return payload.error;
   return fallback;
 }
 
